@@ -1,0 +1,12 @@
+## Interface: 100105
+## Title: MapCleaner
+## Author: bloerwald
+## Version: @project-version@
+## X-Build: @project-revision@
+## X-ReleaseDate: @project-date-iso@
+## X-Curse-Project-ID: 912312
+## X-Wago-ID: ZKxqOyGk
+## SavedVariables: MAPCLEANER_FILTERED_VIGNETTES, MAPCLEANER_FILTERED_POIS
+## IconAtlas: UI-HUD-Minimap-Tracking-Up
+
+MapCleaner.lua

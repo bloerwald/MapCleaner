@@ -76,32 +76,41 @@ function MapCleaner:Startup()
 
   MAPCLEANER_FILTERED_POIS = MAPCLEANER_FILTERED_POIS or {}
 
+  local orig_VignetteDataProviderMixin_ShouldShowVignette = nil
+  local orig_AreaPOIDataProviderMixin_RefreshAllData = nil
+
   function VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo)
-     return vignetteInfo and vignetteInfo.onWorldMap and MAPCLEANER_FILTERED_VIGNETTES[vignetteInfo.vignetteID] == nil
+     return orig_VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo) and
+            MAPCLEANER_FILTERED_VIGNETTES[vignetteInfo.vignetteID] == nil
   end
 
   function AreaPOIDataProviderMixin_RefreshAllData(self, fromOnShow)
-     self:RemoveAllData();
+    -- Data provider has no "shouldShow()" or alike. RefreshAllData() has a tight
+    -- loop without condition. This is a copy with a condition inserted.
 
-     local mapID = self:GetMap():GetMapID();
-     local areaPOIs = GetAreaPOIsForPlayerByMapIDCached(mapID);
-     for i, areaPoiID in ipairs(areaPOIs) do
-        local poiInfo = C_AreaPoiInfo.GetAreaPOIInfo(mapID, areaPoiID);
-        if poiInfo then
-           if MAPCLEANER_FILTERED_POIS[poiInfo.areaPoiID] == nil then
-              poiInfo.dataProvider = self;
-              self:GetMap():AcquirePin(self:GetPinTemplate(), poiInfo);
-           end
-        end
-     end
+    self:RemoveAllData();
+
+    local mapID = self:GetMap():GetMapID();
+    local areaPOIs = GetAreaPOIsForPlayerByMapIDCached(mapID);
+    for i, areaPoiID in ipairs(areaPOIs) do
+      local poiInfo = C_AreaPoiInfo.GetAreaPOIInfo(mapID, areaPoiID);
+      if poiInfo then
+         if MAPCLEANER_FILTERED_POIS[poiInfo.areaPoiID] == nil then
+            poiInfo.dataProvider = self;
+            self:GetMap():AcquirePin(self:GetPinTemplate(), poiInfo);
+         end
+      end
+    end
   end
 
   for dp,_ in pairs(WorldMapFrame.dataProviders) do
      if dp.ShouldShowVignette then
+        orig_VignetteDataProviderMixin_ShouldShowVignette = dp.ShouldShowVignette
         dp.ShouldShowVignette = VignetteDataProviderMixin_ShouldShowVignette
         self.refreshVignettes = function() dp:RefreshAllData(false) end -- todo: does not work
      end
      if dp.RemoveAllData and dp.RemoveAllData == AreaPOIDataProviderMixin.RemoveAllData then
+        orig_AreaPOIDataProviderMixin_RefreshAllData = dp.RefreshAllData
         dp.RefreshAllData = AreaPOIDataProviderMixin_RefreshAllData
         self.refreshPOIs = function() dp:RefreshAllData(false) end
      end

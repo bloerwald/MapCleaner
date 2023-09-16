@@ -299,7 +299,7 @@ function MapCleaner:RemoveFilterForQuest(id)
     return
   end
 
-  local name = MAPCLEANER_FILTERED_QuestS[id]
+  local name = MAPCLEANER_FILTERED_QUESTS[id]
 
   MAPCLEANER_FILTERED_QUESTS[id] = nil
 

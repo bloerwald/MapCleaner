@@ -11,6 +11,8 @@ local COMMAND_FILTERPOI = 'filterpoi'
 local COMMAND_UNFILTERPOI = 'unfilterpoi'
 local COMMAND_FILTERVIGNETTE = 'filtervignette'
 local COMMAND_UNFILTERVIGNETTE = 'unfiltervignette'
+local COMMAND_FILTERQUEST = 'filterquest'
+local COMMAND_UNFILTERQUEST = 'unfilterquest'
 local COMMAND_LISTFILTERED = 'listfiltered'
 local COMMAND_LISTVISIBLE = 'listvisible'
 
@@ -18,46 +20,60 @@ local L = {
   ['enUS'] = {
     ['ADDED_POI'] = ADDON_NAME .. ': Added POI %s (%d) to filter list.',
     ['ADDED_VIGNETTE'] = ADDON_NAME .. ': Added vignette %s (%d) to filter list.',
+    ['ADDED_QUEST'] = ADDON_NAME .. ': Added quest %s (%d) to filter list.',
     ['REMOVED_POI'] = ADDON_NAME .. ': Removed POI %s (%d) from filter list.',
     ['REMOVED_VIGNETTE'] = ADDON_NAME .. ': Removed vignette %s (%d) from filter list.',
+    ['REMOVED_QUEST'] = ADDON_NAME .. ': Removed quest %s (%d) from filter list.',
     ['LIST_ITEM_NAME_ID_PAIR'] = '- %s (%d)',
     ['LIST_FILTERED_EMPTY'] = ADDON_NAME .. ': No filters at all.',
     ['LIST_FILTERED_VIGNETTES'] = ADDON_NAME .. ': Filtered vignettes:',
     ['LIST_FILTERED_POIS'] = ADDON_NAME .. ': Filtered area POIs:',
-    ['LIST_VISIBLE_EMPTY'] = ADDON_NAME .. ': No visible vignettes or POIs at all.',
+    ['LIST_FILTERED_QUESTS'] = ADDON_NAME .. ': Filtered area quests:',
+    ['LIST_VISIBLE_EMPTY'] = ADDON_NAME .. ': No visible vignettes, POIs or quests at all.',
     ['LIST_VISIBLE_VIGNETTES'] = ADDON_NAME .. ': Visible vignettes:',
     ['LIST_VISIBLE_POIS'] = ADDON_NAME .. ': Visible area POIs:',
+    ['LIST_VISIBLE_QUESTS'] = ADDON_NAME .. ': Visible area quests:',
     ['HELP_LINE_FILTERPOI'] = '- add a filter for an area POI: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERPOI .. ' id',
     ['HELP_LINE_FILTERVIGNETTE'] = '- add a filter for a vignette: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERVIGNETTE .. ' id',
+    ['HELP_LINE_FILTERQUEST'] = '- add a filter for a quest: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERQUEST .. ' id',
     ['HELP_LINE_UNFILTERPOI'] = '- remove a filter for an area POI: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERPOI .. ' id',
     ['HELP_LINE_UNFILTERVIGNETTE'] = '- remove a filter for a vignette: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERVIGNETTE .. ' id',
+    ['HELP_LINE_UNFILTERQUEST'] = '- remove a filter for a quest: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERQUEST .. ' id',
     ['HELP_LINE_LISTVISIBLE'] = '- show all currently visible items: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- it is strongly recommended to use an Addon like idTip instead!',
     ['HELP_LINE_LISTFILTERED'] = '- show all current filters: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTFILTERED,
     ['HELP_LINE_SHORTCUT'] = 'You can use either ' .. SLASH_MAPCLEANER1 .. ' or ' .. SLASH_MAPCLEANER2 .. '.',
     ['ERROR_NO_SUCH_FILTERED_POI_ID'] = ADDON_NAME .. ': No filtered area POI with id %d ("%s").',
     ['ERROR_NO_SUCH_FILTERED_VIGNETTE_ID'] = ADDON_NAME .. ': No filtered vignette with id %d ("%s").',
+    ['ERROR_NO_SUCH_FILTERED_QUEST_ID'] = ADDON_NAME .. ': No filtered quest with id %d ("%s").',
   },
   ['deDE'] = {
     ['ADDED_POI'] = ADDON_NAME .. ': POI %s (%d) zur Filterliste hinzugefügt.',
     ['ADDED_VIGNETTE'] = ADDON_NAME .. ': Vignette %s (%d) zur Filterliste hinzugefügt.',
+    ['ADDED_QUEST'] = ADDON_NAME .. ': Quest %s (%d) zur Filterliste hinzugefügt.',
     ['REMOVED_POI'] = ADDON_NAME .. ': POI %s (%d) aus Filterliste gelöscht.',
     ['REMOVED_VIGNETTE'] = ADDON_NAME .. ': Vignette %s (%d) aus Filterliste gelöscht.',
+    ['REMOVED_QUEST'] = ADDON_NAME .. ': Quest %s (%d) aus Filterliste gelöscht.',
     ['LIST_ITEM_NAME_ID_PAIR'] = '- %s (%d)',
     ['LIST_FILTERED_EMPTY'] = ADDON_NAME .. ': Kein einziger Filter.',
     ['LIST_FILTERED_VIGNETTES'] = ADDON_NAME .. ': Gefilterte Vignetten:',
     ['LIST_FILTERED_POIS'] = ADDON_NAME .. ': Gefilterte Gebiets-POIs:',
-    ['LIST_VISIBLE_EMPTY'] = ADDON_NAME .. ': Kein einziger sichtbarer Gebiets-POIs oder Vignette.',
+    ['LIST_FILTERED_QUESTS'] = ADDON_NAME .. ': Gefilterte Quests:',
+    ['LIST_VISIBLE_EMPTY'] = ADDON_NAME .. ': Kein einziger sichtbarer Gebiets-POI, Vignette oder Quest.',
     ['LIST_VISIBLE_VIGNETTES'] = ADDON_NAME .. ': Sichtbare Vignetten:',
     ['LIST_VISIBLE_POIS'] = ADDON_NAME .. ': Sichtbare Gebiets-POIs:',
+    ['LIST_VISIBLE_QUESTS'] = ADDON_NAME .. ': Sichtbare Quests:',
     ['HELP_LINE_FILTERPOI'] = '- Füge einen Filter für einen Gebiets POI hinzu: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERPOI .. ' id',
     ['HELP_LINE_FILTERVIGNETTE'] = '- Füge einen Filter für eine Vignette hinzu: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERVIGNETTE .. ' id',
+    ['HELP_LINE_FILTERQUEST'] = '- Füge einen Filter für eine Quest hinzu: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_FILTERQUEST .. ' id',
     ['HELP_LINE_UNFILTERPOI'] = '- Entferne einen Filter für einen Gebiets POI: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERPOI .. ' id',
     ['HELP_LINE_UNFILTERVIGNETTE'] = '- Entferne einen Filter für eine Vignette: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERVIGNETTE .. ' id',
+    ['HELP_LINE_UNFILTERQUEST'] = '- Entferne einen Filter für eine Quest: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERQUEST .. ' id',
     ['HELP_LINE_LISTVISIBLE'] = '- Zeige alle derzeit sichtbaren Dinge: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- Die alternative Nutzung von einem Addon wie idTip ist sehr stark empfohlen!',
     ['HELP_LINE_LISTFILTERED'] = '- Zeige die aktuell eingestellten Filter: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTFILTERED,
     ['HELP_LINE_SHORTCUT'] = 'Du kannst entweder ' .. SLASH_MAPCLEANER1 .. ' oder ' .. SLASH_MAPCLEANER2 .. ' nutzen.',
     ['ERROR_NO_SUCH_FILTERED_POI_ID'] = ADDON_NAME .. ': Kein gefilteter Gebiets-POI mit ID %d ("%s").',
     ['ERROR_NO_SUCH_FILTERED_VIGNETTE_ID'] = ADDON_NAME .. ': Keine gefilterte Vignette mit ID %d ("%s").',
+    ['ERROR_NO_SUCH_FILTERED_QUEST_ID'] = ADDON_NAME .. ': Keine gefilterte Quest mit ID %d ("%s").',
   },
 }
 local currentLocale = GetLocale()
@@ -73,11 +89,12 @@ setmetatable(L, L.__meta)
 
 function MapCleaner:Startup()
   MAPCLEANER_FILTERED_VIGNETTES = MAPCLEANER_FILTERED_VIGNETTES or {}
-
   MAPCLEANER_FILTERED_POIS = MAPCLEANER_FILTERED_POIS or {}
+  MAPCLEANER_FILTERED_QUESTS = MAPCLEANER_FILTERED_QUESTS or {}
 
   local orig_VignetteDataProviderMixin_ShouldShowVignette = nil
   local orig_AreaPOIDataProviderMixin_RefreshAllData = nil
+  local orig_MapUtil_ShouldShowTask = nil
 
   function VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo)
      return orig_VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo) and
@@ -103,6 +120,11 @@ function MapCleaner:Startup()
     end
   end
 
+  function MapUtil_ShouldShowTask(mapID, info)
+    return orig_MapUtil_ShouldShowTask(mapID, info) and
+           MAPCLEANER_FILTERED_QUESTS[info.questId] == nil
+  end
+
   for dp,_ in pairs(WorldMapFrame.dataProviders) do
      if dp.ShouldShowVignette then
         orig_VignetteDataProviderMixin_ShouldShowVignette = dp.ShouldShowVignette
@@ -113,6 +135,11 @@ function MapCleaner:Startup()
         orig_AreaPOIDataProviderMixin_RefreshAllData = dp.RefreshAllData
         dp.RefreshAllData = AreaPOIDataProviderMixin_RefreshAllData
         self.refreshPOIs = function() dp:RefreshAllData(false) end
+     end
+     if dp.RefreshAllData and dp.RefreshAllData == BonusObjectiveDataProviderMixin.RefreshAllData then
+        orig_MapUtil_ShouldShowTask = MapUtil.ShouldShowTask
+        MapUtil.ShouldShowTask = MapUtil_ShouldShowTask
+        self.refreshQuests = function() dp:RefreshAllData(false) end
      end
   end
 end
@@ -228,10 +255,64 @@ function MapCleaner:RemoveFilterForVignette(id)
   print(format(L.REMOVED_VIGNETTE, name, id))
 end
 
+function MapCleaner:TryGetQuestName(questId)
+  self.cachedQuestNames = self.cachedQuestNames or {}
+  if self.cachedQuestNames[questId] == nil then
+    local name = QuestUtils_GetQuestName(questId)
+    if name ~= "" then
+      self.cachedQuestNames[questId] = name
+    end
+  end
+  return self.cachedQuestNames[questId] or SENTINEL_UNKNOWN_NAME
+end
+
+function MapCleaner:AllVisibleQuests()
+  local quests = {}
+  for mapId = 1, PROBABLY_MORE_THAN_MAP_ID do
+    local maybeInfos = GetQuestsForPlayerByMapIDCached(mapId)
+    if maybeInfos then
+      for i, info in ipairs(maybeInfos) do
+        local name = self:TryGetQuestName(info.questId, mapId)
+        if name ~= nil then
+          quests[info.questId] = name
+        end
+      end
+    end
+  end
+  return quests
+end
+
+
+function MapCleaner:AddFilterForQuest(id)
+  local name = self:TryGetQuestName(id)
+
+  MAPCLEANER_FILTERED_QUESTS[id] = name
+
+  self:refreshQuests()
+
+  print(format(L.ADDED_QUEST, name, id))
+end
+
+function MapCleaner:RemoveFilterForQuest(id)
+  if MAPCLEANER_FILTERED_QUESTS[id] == nil then
+    print(format(L.ERROR_NO_SUCH_FILTERED_QUEST_ID, id, self:TryGetQuestName(id)))
+    return
+  end
+
+  local name = MAPCLEANER_FILTERED_QuestS[id]
+
+  MAPCLEANER_FILTERED_QUESTS[id] = nil
+
+  self:refreshQuests()
+
+  print(format(L.REMOVED_QUEST, name, id))
+end
+
 function MapCleaner:ListFiltered()
   local hasVignettes = next(MAPCLEANER_FILTERED_VIGNETTES) ~= nil
   local hasPOIs = next(MAPCLEANER_FILTERED_POIS) ~= nil
-  if not hasVignettes and not hasPOIs then
+  local hasQuests = next(MAPCLEANER_FILTERED_QUESTS) ~= nil
+  if not hasVignettes and not hasPOIs and not hasQuests then
     print(format(L.LIST_FILTERED_EMPTY))
   end
   if hasVignettes then
@@ -254,14 +335,26 @@ function MapCleaner:ListFiltered()
       print(format(L.LIST_ITEM_NAME_ID_PAIR, name, id))
     end
   end
+  if hasQuests then
+    print(format(L.LIST_FILTERED_QUESTS))
+    for id, name in pairs(MAPCLEANER_FILTERED_QUESTS) do
+      if name == SENTINEL_UNKNOWN_NAME then
+        name = self:TryGetQuestName(id)
+        MAPCLEANER_FILTERED_QUESTS[id] = name
+      end
+      print(format(L.LIST_ITEM_NAME_ID_PAIR, name, id))
+    end
+  end
 end
 
 function MapCleaner:ListVisible()
   local allVignettes = self:AllVisibleVignettes()
   local allPOIs = self:AllVisiblePOIs()
+  local allQuests = self:AllVisibleQuests()
   local hasVignettes = next(allVignettes) ~= nil
   local hasPOIs = next(allPOIs) ~= nil
-  if not hasVignettes and not hasPOIs then
+  local hasQuests = next(allQuests) ~= nil
+  if not hasVignettes and not hasPOIs and not hasQuests then
     print(format(L.LIST_VISIBLE_EMPTY))
   end
   if hasVignettes then
@@ -273,6 +366,12 @@ function MapCleaner:ListVisible()
   if hasPOIs then
     print(format(L.LIST_VISIBLE_POIS))
     for id, name in pairs(allPOIs) do
+      print(format(L.LIST_ITEM_NAME_ID_PAIR, name, id))
+    end
+  end
+  if hasQuests then
+    print(format(L.LIST_VISIBLE_QUESTS))
+    for id, name in pairs(allQuests) do
       print(format(L.LIST_ITEM_NAME_ID_PAIR, name, id))
     end
   end
@@ -292,6 +391,12 @@ function MapCleaner:Cli(line)
   elseif op == COMMAND_UNFILTERVIGNETTE then
     local id = tonumber(rest)
     MapCleaner:RemoveFilterForVignette(id)
+  elseif op == COMMAND_FILTERQUEST then
+    local id = tonumber(rest)
+    MapCleaner:AddFilterForQuest(id)
+  elseif op == COMMAND_UNFILTERQUEST then
+    local id = tonumber(rest)
+    MapCleaner:RemoveFilterForQuest(id)
   elseif op == COMMAND_LISTFILTERED then
     MapCleaner:ListFiltered()
   elseif op == COMMAND_LISTVISIBLE then
@@ -300,8 +405,10 @@ function MapCleaner:Cli(line)
     print(ADDON_NAME)
     print(format(L.HELP_LINE_FILTERPOI))
     print(format(L.HELP_LINE_FILTERVIGNETTE))
+    print(format(L.HELP_LINE_FILTERQUEST))
     print(format(L.HELP_LINE_UNFILTERPOI))
     print(format(L.HELP_LINE_UNFILTERVIGNETTE))
+    print(format(L.HELP_LINE_UNFILTERQUEST))
     print(format(L.HELP_LINE_LISTVISIBLE))
     print(format(L.HELP_LINE_LISTFILTERED))
     print(format(L.HELP_LINE_SHORTCUT))

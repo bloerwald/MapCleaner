@@ -515,6 +515,7 @@ function MapCleaner:ListVisible()
 end
 
 function MapCleaner:Cli(line)
+  line = line:lower()
   local op, rest = line:match("^(%S*)%s*(.-)$")
   if op == COMMAND_FILTERPOI then
     local id = tonumber(rest)

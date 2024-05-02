@@ -17,6 +17,7 @@ local COMMAND_FILTERBOUNTYBOARD = 'filterbountyboard'
 local COMMAND_UNFILTERBOUNTYBOARD = 'unfilterbountyboard'
 local COMMAND_LISTFILTERED = 'listfiltered'
 local COMMAND_LISTVISIBLE = 'listvisible'
+local COMMAND_LISTVISIBLEALL = 'listvisibleall'
 
 local L = {
   ['enUS'] = {
@@ -48,7 +49,8 @@ local L = {
     ['HELP_LINE_UNFILTERVIGNETTE'] = '- remove a filter for a vignette: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERVIGNETTE .. ' id',
     ['HELP_LINE_UNFILTERQUEST'] = '- remove a filter for a quest: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERQUEST .. ' id',
     ['HELP_LINE_UNFILTERBOUNTYBOARD'] = '- remove a filter for a bounty boad: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERBOUNTYBOARD .. ' id',
-    ['HELP_LINE_LISTVISIBLE'] = '- show all currently visible items: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- it is strongly recommended to use an Addon like idTip instead!',
+    ['HELP_LINE_LISTVISIBLE'] = '- show currently visible items: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- Note that "currently visible" is badly defined and may include extra items.',
+    ['HELP_LINE_LISTVISIBLEALL'] = '- show pretty much all items: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- it is strongly recommended to use an Addon like idTip instead!',
     ['HELP_LINE_LISTFILTERED'] = '- show all current filters: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTFILTERED,
     ['HELP_LINE_SHORTCUT'] = 'You can use either ' .. SLASH_MAPCLEANER1 .. ' or ' .. SLASH_MAPCLEANER2 .. '.',
     ['ERROR_NO_SUCH_FILTERED_POI_ID'] = ADDON_NAME .. ': No filtered area POI with id %d ("%s").',
@@ -85,7 +87,8 @@ local L = {
     ['HELP_LINE_UNFILTERVIGNETTE'] = '- Entferne einen Filter für eine Vignette: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERVIGNETTE .. ' id',
     ['HELP_LINE_UNFILTERQUEST'] = '- Entferne einen Filter für eine Quest: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERQUEST .. ' id',
     ['HELP_LINE_UNFILTERBOUNTYBOARD'] = '- Entferne einen Filter für eine Weltquestbonusanzeige: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_UNFILTERBOUNTYBOARD .. ' id',
-    ['HELP_LINE_LISTVISIBLE'] = '- Zeige alle derzeit sichtbaren Dinge: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- Die alternative Nutzung von einem Addon wie idTip ist sehr stark empfohlen!',
+    ['HELP_LINE_LISTVISIBLE'] = '- Zeige derzeit sichtbare Dinge: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- Beachte, dass "derzeit sichtbar" unklar definiert ist und zusätzliche Dinge gelistet werden können.',
+    ['HELP_LINE_LISTVISIBLEALL'] = '- Zeige ziemlich alle Dinge: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTVISIBLE .. ' -- Die alternative Nutzung von einem Addon wie idTip ist sehr stark empfohlen!',
     ['HELP_LINE_LISTFILTERED'] = '- Zeige die aktuell eingestellten Filter: ' .. SLASH_MAPCLEANER1 .. ' ' .. COMMAND_LISTFILTERED,
     ['HELP_LINE_SHORTCUT'] = 'Du kannst entweder ' .. SLASH_MAPCLEANER1 .. ' oder ' .. SLASH_MAPCLEANER2 .. ' nutzen.',
     ['ERROR_NO_SUCH_FILTERED_POI_ID'] = ADDON_NAME .. ': Kein gefilteter Gebiets-POI mit ID %d ("%s").',
@@ -201,6 +204,19 @@ function MapCleaner:Startup()
 end
 
 local PROBABLY_MORE_THAN_MAP_ID = 4000
+local function relevantMapIds(reallyAll)
+   local best = C_Map.GetBestMapForUnit("player")
+   local current = WorldMapFrame and WorldMapFrame:GetMapID()
+   current = current ~= best and current or nil
+
+   local all = function(_, lastvalue)
+      return lastvalue and lastvalue < PROBABLY_MORE_THAN_MAP_ID and lastvalue + 1 or nil
+   end
+   local some = function(_, lastvalue)
+      return lastvalue == 0 and best or lastvalue == best and current or nil
+   end
+   return reallyAll and all or some, nil, 0
+end
 
 function MapCleaner:TryGetPOIName(poiId, mapIdBegin)
   self.cachedPOINames = self.cachedPOINames or {}
@@ -222,9 +238,9 @@ function MapCleaner:TryGetPOIName(poiId, mapIdBegin)
   return self.cachedPOINames[poiId] or SENTINEL_UNKNOWN_NAME
 end
 
-function MapCleaner:AllVisiblePOIs()
+function MapCleaner:AllVisiblePOIs(reallyAll)
   local pois = {}
-  for mapId = 1, PROBABLY_MORE_THAN_MAP_ID do
+  for mapId in relevantMapIds(reallyAll) do
     for i, poiId in ipairs(GetAreaPOIsForPlayerByMapIDCached(mapId)) do
       local name = self:TryGetPOIName(poiId, mapId)
       if name ~= nil then
@@ -274,7 +290,7 @@ function MapCleaner:TryGetVignetteName(vignetteId)
   return self.cachedVignetteNames[vignetteId] or SENTINEL_UNKNOWN_NAME
 end
 
-function MapCleaner:AllVisibleVignettes()
+function MapCleaner:AllVisibleVignettes(reallyAll)
   local vignettes = {}
   -- yes, this is bad complexity, but it ensures cache is populated.
   for _, vignetteGUID in ipairs(C_VignetteInfo.GetVignettes()) do
@@ -322,9 +338,9 @@ function MapCleaner:TryGetQuestName(questId)
   return self.cachedQuestNames[questId] or SENTINEL_UNKNOWN_NAME
 end
 
-function MapCleaner:AllVisibleQuests()
+function MapCleaner:AllVisibleQuests(reallyAll)
   local quests = {}
-  for mapId = 1, PROBABLY_MORE_THAN_MAP_ID do
+  for mapId in relevantMapIds(reallyAll) do
     local maybeInfos = GetQuestsForPlayerByMapIDCached(mapId)
     if maybeInfos then
       for i, info in ipairs(maybeInfos) do
@@ -375,9 +391,9 @@ function MapCleaner:GetMapName(mapId)
   return self.cachedMapNames[mapId] or SENTINEL_UNKNOWN_NAME
 end
 
-function MapCleaner:AllVisibleBountyBoards()
+function MapCleaner:AllVisibleBountyBoards(reallyAll)
   local mapsWithBountyBoard = {}
-  for mapId = 1, PROBABLY_MORE_THAN_MAP_ID do
+  for mapId in relevantMapIds(reallyAll) do
     if MapUtil.MapHasEmissaries(mapId) then
       mapsWithBountyBoard[mapId] = self:GetMapName(mapId)
     end
@@ -476,11 +492,11 @@ function MapCleaner:ListFiltered()
   end
 end
 
-function MapCleaner:ListVisible()
-  local allVignettes = self:AllVisibleVignettes()
-  local allPOIs = self:AllVisiblePOIs()
-  local allQuests = self:AllVisibleQuests()
-  local allBountyBoards = self:AllVisibleBountyBoards()
+function MapCleaner:ListVisible(reallyAll)
+  local allVignettes = self:AllVisibleVignettes(reallyAll)
+  local allPOIs = self:AllVisiblePOIs(reallyAll)
+  local allQuests = self:AllVisibleQuests(reallyAll)
+  local allBountyBoards = self:AllVisibleBountyBoards(reallyAll)
   local hasVignettes = next(allVignettes) ~= nil
   local hasPOIs = next(allPOIs) ~= nil
   local hasQuests = next(allQuests) ~= nil
@@ -543,8 +559,10 @@ function MapCleaner:Cli(line)
     MapCleaner:RemoveFilterForBountyBoard(id)
   elseif op == COMMAND_LISTFILTERED then
     MapCleaner:ListFiltered()
+  elseif op == COMMAND_LISTVISIBLEALL then
+    MapCleaner:ListVisible(true)
   elseif op == COMMAND_LISTVISIBLE then
-    MapCleaner:ListVisible()
+    MapCleaner:ListVisible(false)
   else
     print(ADDON_NAME)
     print(format(L.HELP_LINE_FILTERPOI))
@@ -556,6 +574,7 @@ function MapCleaner:Cli(line)
     print(format(L.HELP_LINE_UNFILTERQUEST))
     print(format(L.HELP_LINE_UNFILTERBOUNTYBOARD))
     print(format(L.HELP_LINE_LISTVISIBLE))
+    print(format(L.HELP_LINE_LISTVISIBLEALL))
     print(format(L.HELP_LINE_LISTFILTERED))
     print(format(L.HELP_LINE_SHORTCUT))
   end

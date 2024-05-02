@@ -19,4 +19,5 @@ Use the `/mapcleaner` or `/mc` slash command:
 - `/mc filterbountyboard 1331` removes the bounty board or activity reminder from map 1331. `/mc filterbountyboard current` does the same for the currently opened map.
 - `/mc unfiltervignette 1331`, `/mc unfilterpoi 1331`, `/mc unfilterquest 1331` and `/mc unfilterbountyboard 1331` (or `… current`) reverses that.
 - `/mc listfiltered` gives you a list with everything you removed.
-- `/mc listvisible` gives a load of POIs, vignettes and quests that can be filtered. The [idTip](https://github.com/ItsJustMeChris/idTip-Community-Fork) addon is **way** superior to this list since it allows you to hover an annoying icon and just see the ID rather than searching in this way too long list.
+- `/mc listvisible` gives a many visible POIs, vignettes and quests that can be filtered.
+- `/mc listvisibleall` gives a load of POIs, vignettes and quests that can be filtered. The [idTip](https://github.com/ItsJustMeChris/idTip-Community-Fork) addon is **way** superior to this list since it allows you to hover an annoying icon and just see the ID rather than searching in this way too long list.

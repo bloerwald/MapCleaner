@@ -100,11 +100,8 @@ local L = {
 local currentLocale = GetLocale()
 L.__meta = {}
 L.__meta.__index = function(tab, key)
-  local l = currentLocale
-  if tab[l][key] == nil then
-    l = 'enUS'
-  end
-  return tab[l][key] or key
+  local sub = rawget(tab, currentLocale) or rawget(tab, 'enUS')
+  return rawget(sub, key) or key
 end
 setmetatable(L, L.__meta)
 

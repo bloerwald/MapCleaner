@@ -105,6 +105,135 @@ L.__meta.__index = function(tab, key)
 end
 setmetatable(L, L.__meta)
 
+local RefreshAllDataPoiMixins = {
+  [AreaPOIDataProviderMixin.RefreshAllData] = "AreaPOIPinTemplate",
+  [AreaPOIEventDataProviderMixin.RefreshAllData] = "AreaPOIEventPinTemplate",
+  [QuestOfferDataProviderMixin.RefreshAllData] = "QuestHubPinTemplate",
+}
+local RefreshAllDataVignetteMixins = {
+  [VignetteDataProviderMixin.RefreshAllData] = "VignettePinTemplate",
+}
+local RefreshAllQuestMixins = {
+  [BonusObjectiveDataProviderMixin.RefreshAllData] = {"BonusObjectivePinTemplate", "ThreatObjectivePinTemplate"},
+  [QuestDataProviderMixin.RefreshAllData] = {"QuestPinTemplate"},
+  [QuestOfferDataProviderMixin.RefreshAllData] = {"QuestOfferPinTemplate"},
+}
+local poiSources = {
+  GetAreaPOIsForPlayerByMapIDCached,
+  C_AreaPoiInfo.GetQuestHubsForMap,
+  C_AreaPoiInfo.GetEventsForMap,
+}
+
+local function removePin(dp, pin)
+  --queue if in combat
+  removePinImpl[pin.pinTemplate](dp, pin)
+end
+
+local function removePinTrivial(pin)
+  WorldMapFrame:RemovePin(pin)
+end
+local function removePinVignetteDataProviderMixin(pin)
+--self.vignetteGuidsToPins
+
+    --if pin:IsUnique() then
+    --  pin.dataProvider:RemoveUniquePin(pin);
+    --end
+    --pin:Remove();
+    --pin.dataProvider.vignetteGuidsToPins[pin.vignetteGUID] = nil
+
+  --WorldMapFrame.pinPools[pin.pinTemplate]:Release(pin);   --fails with nil somewhere
+  pin.dataProvider:RemoveUniquePin(pin)
+  pin:Remove()
+  --dump(pin)
+  --dump(pin.dataProvider.vignetteGuidsToPins)
+  pin.dataProvider.vignetteGuidsToPins[pin.vignetteGUID] = nil
+  --removePinTrivial(pin)
+end
+
+local removePinImpl = {
+  AreaPOIEventPinTemplate    = removePinTrivial,
+  AreaPOIPinTemplate         = removePinTrivial,
+  BonusObjectivePinTemplate  = removePinTrivial,
+  QuestHubPinTemplate        = removePinTrivial,
+  QuestOfferPinTemplate      = removePinTrivial,
+  QuestPinTemplate           = removePinTrivial,
+  ThreatObjectivePinTemplate = removePinTrivial,
+  VignettePinTemplate        = removePinVignetteDataProviderMixin,
+}
+
+function MapCleaner:RemovePin(pinTemplate, pin)
+  removePinImpl[pinTemplate](pin)
+end
+
+function MapCleaner:FilterTemplateAreaPoi(pinTemplate, pin)
+  local areaPoiId = pin.areaPoiID
+  return areaPoiId and MAPCLEANER_FILTERED_POIS[areaPoiId] ~= nil
+end
+
+function MapCleaner:FilterTemplateQuest(pinTemplate, pin)
+  local questId = pin.questId or pin.questID or pin:GetQuestID()
+  return questId and MAPCLEANER_FILTERED_QUESTS[questId] ~= nil
+end
+
+function MapCleaner:FilterTemplateVignette(pinTemplate, pin)
+  local vignetteId = pin:GetVignetteID()
+  return vignetteId and MAPCLEANER_FILTERED_VIGNETTES[vignetteId] ~= nil
+end
+
+function MapCleaner:FilterTemplateQuestHub(pinTemplate, pin)
+  return pin.dataProvider.GetRelatedQuests ~= nil and #pin.dataProvider:GetRelatedQuests() == 0
+end
+
+local filterTemplate = {
+  AreaPOIEventPinTemplate    = {MapCleaner.FilterTemplateAreaPoi},
+  AreaPOIPinTemplate         = {MapCleaner.FilterTemplateAreaPoi},
+  BonusObjectivePinTemplate  = {MapCleaner.FilterTemplateQuest},
+  QuestHubPinTemplate        = {MapCleaner.FilterTemplateAreaPoi, MapCleaner.FilterTemplateQuestHub},
+  QuestOfferPinTemplate      = {MapCleaner.FilterTemplateQuest},
+  QuestPinTemplate           = {MapCleaner.FilterTemplateQuest},
+  ThreatObjectivePinTemplate = {MapCleaner.FilterTemplateQuest},
+  VignettePinTemplate        = {MapCleaner.FilterTemplateVignette},
+}
+
+function MapCleaner:DoTemplateUpdates()
+  if InCombatLockdown() then
+    return self:_DoTemplateUpdatesInNextFrameOrWhenOutOfCombat()
+  end
+  self.hasDoTemplateUpdatesQueued = false
+
+  for pinTemplate, count in pairs(self.shallDoTemplateUpdate) do
+    local filters = filterTemplate[pinTemplate]
+   -- print('--',pinTemplate, count)
+    if filters then
+      for pin in WorldMapFrame:EnumeratePinsByTemplate(pinTemplate) do
+        for _, filter in ipairs(filters) do
+          -- removes during iteration. bad?
+          if filter(self, pinTemplate, pin) then
+            self:RemovePin(pinTemplate, pin)
+            break
+          end
+        end
+      end
+    end
+  end
+  self.shallDoTemplateUpdate = {}
+end
+
+function MapCleaner:_DoTemplateUpdatesInNextFrameOrWhenOutOfCombat()
+  self.hasDoTemplateUpdatesQueued = true
+  if InCombatLockdown() then
+    EventUtil.RegisterOnceFrameEventAndCallback("PLAYER_REGEN_ENABLED", function() self:DoTemplateUpdates() end)
+  else
+    C_Timer.After(0, function() self:DoTemplateUpdates() end) -- could immediately do stuff here to maybe avoid blinking like in 20y chromie scenario, but come on.
+  end
+end
+
+function MapCleaner:DoTemplateUpdatesInNextFrameOrWhenOutOfCombat()
+  if not self.hasDoTemplateUpdatesQueued then
+    self:_DoTemplateUpdatesInNextFrameOrWhenOutOfCombat()
+  end
+end
+
 function MapCleaner:Startup()
   MAPCLEANER_FILTERED_VIGNETTES = MAPCLEANER_FILTERED_VIGNETTES or {}
   MAPCLEANER_FILTERED_POIS = MAPCLEANER_FILTERED_POIS or {}
@@ -112,34 +241,98 @@ function MapCleaner:Startup()
   MAPCLEANER_FILTERS = MAPCLEANER_FILTERS or {}
   MAPCLEANER_FILTERS.bountyBoards = MAPCLEANER_FILTERS.bountyBoards or {}
 
-  local orig_VignetteDataProviderMixin_ShouldShowVignette = nil
-  function VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo)
-     return orig_VignetteDataProviderMixin_ShouldShowVignette(self, vignetteInfo) and
-            MAPCLEANER_FILTERED_VIGNETTES[vignetteInfo.vignetteID] == nil
-  end
+  self.hasDoTemplateUpdatesQueued = false
+  self.shallDoTemplateUpdate = {}
 
-  function AreaPOIDataProviderMixin_RefreshAllData(self, fromOnShow)
-    -- Data provider has no "shouldShow()" or alike. RefreshAllData() has a tight
-    -- loop without condition. This is a copy with a condition inserted.
+  local pinTemplatesToIgnore = {
+    ["HereBeDragonsPinsTemplate"] = true,
+    ["HandyNotesWorldMapPinTemplate"] = true,
+    ["SilverDragonOverlayWorldMapPinTemplate"] = true,
+    ["HandyNotes_WarWithinWorldMapDecorationPinTemplate"] = true,
+    ["HandyNotes_WarWithinWorldMapRoutePinTemplate"] = true,
+    ["HandyNotes_TheWarWithinWorldMapPinTemplate"] = true,
+    ["SilverDragonOverlayRoutePinTemplate"] = true,
+    ["PlumberWorldMapPinTemplate"] = true,
 
-    self:RemoveAllData();
+    ["AdventureMap_FogPinTemplate"] = true,
+    ["AdventureMap_QuestChoicePinTemplate"] = true,
+    ["AdventureMap_QuestOfferPinTemplate"] = true,
+    ["AdventureMap_ZoneSummaryInsetPinTemplate"] = true,
+    ["AdventureMap_ZoneSummaryPinTemplate"] = true,
+    ["FlightMap_AreaPOIPinTemplate"] = true,
+    ["FlightMap_FlightPointPinTemplate"] = true,
+    ["FlightMap_QuestPinTemplate"] = true,
+    ["FlightMap_VignettePinTemplate"] = true,
+    ["FlightMap_WorldQuestPinTemplate"] = true,
+    ["PlunderstormCircleBasePinTemplate"] = true,
+    ["PlunderstormInnerCirclePinTemplate"] = true,
+    ["PlunderstormOuterCirclePinTemplate"] = true,
+    ["WorldMap_DebugObjectPinTemplate"] = true,
+    ["WorldMap_DebugPortLocPinTemplate"] = true,
 
-    local mapID = self:GetMap():GetMapID();
-    local areaPOIs = GetAreaPOIsForPlayerByMapIDCached(mapID);
-    for i, areaPoiID in ipairs(areaPOIs) do
-      local poiInfo = C_AreaPoiInfo.GetAreaPOIInfo(mapID, areaPoiID);
-      if poiInfo then
-         if MAPCLEANER_FILTERED_POIS[poiInfo.areaPoiID] == nil then
-            poiInfo.dataProvider = self;
-            self:GetMap():AcquirePin(self:GetPinTemplate(), poiInfo);
-         end
-      end
-    end
-  end
+    -- probably
+    ["DigSitePinTemplate"] = false,
+    ["AreaPOIEventPinTemplate"] = false,
+    ["AreaPOIPinTemplate"] = false,
+    ["BonusObjectivePinTemplate"] = false,
+    ["QuestHubPinTemplate"] = false,
+    ["QuestOfferPinTemplate"] = false,
+    ["QuestPinTemplate"] = false,
+
+    -- have cvar ignore
+    ["DelveEntrancePinTemplate"] = true, -- hide nonbounty?
+    ["DragonridingRacePinTemplate"] = true,
+    ["FlightPointPinTemplate"] = true,
+    ["DungeonEntrancePinTemplate"] = true,
+    ["PetTamerPinTemplate"] = true,
+
+    -- essential for gameplay
+    ["CorpsePinTemplate"] = true,
+    ["BattlefieldFlagPinTemplate"] = true,
+    ["DeathReleasePinTemplate"] = true,
+    ["GroupMembersPinTemplate"] = true,
+    ["SelectableGraveyardPinTemplate"] = true,
+    ["WaypointLocationPinTemplate"] = true,
+    ["GarrisonPlotPinTemplate"] = true,
+
+    ["FogOfWarPinTemplate"] = false,
+
+    ["AnimaDiversionModelScenePinTemplate"] = false,
+    ["AnimaDiversionPinTemplate"] = false,
+    ["AnimaDiversion_WorldQuestPinTemplate"] = false,
+    ["ContentTrackingPinTemplate"] = false,
+    ["ContributionCollectorPinTemplate"] = false,
+    ["EncounterJournalPinTemplate"] = false,
+    ["EncounterMapTrackingPinTemplate"] = false,
+    ["FyrakkFlightVignettePinTemplate"] = false,
+    ["GossipPinTemplate"] = false,
+    ["InvasionPinTemplate"] = false,
+    ["MapExplorationPinTemplate"] = false,
+    ["MapHighlightPinTemplate"] = false,
+    ["MapLinkPinTemplate"] = false,
+    ["QuestBlobPinTemplate"] = false,
+    ["ScenarioBlobPinTemplate"] = false,
+    ["ScenarioPinTemplate"] = false,
+    ["ThreatObjectivePinTemplate"] = false,
+    ["VehiclePinTemplate"] = false,
+    ["VignettePinTemplate"] = false,
+    ["WorldMapInvasionOverlayPinTemplate"] = false,
+    ["WorldMapThreatOverlayPinTemplate"] = false,
+    ["WorldMap_WorldQuestPinTemplate"] = false,
+    ["WorldQuestPinTemplate"] = false,
+    ["WorldQuestSpellEffectPinTemplate"] = false,
+
+  }
+
+  hooksecurefunc(WorldMapFrame, "AcquirePin", function(worldMapFrame, pinTemplate, ...)
+    if pinTemplatesToIgnore[pinTemplate] then return end
+    self.shallDoTemplateUpdate[pinTemplate] = (self.shallDoTemplateUpdate[pinTemplate] or 0) + 1
+    self:DoTemplateUpdatesInNextFrameOrWhenOutOfCombat()
+  end)
 
   local orig_MapUtil_ShouldShowTask = nil
   function MapUtil_ShouldShowTask(mapID, info)
-    return orig_MapUtil_ShouldShowTask(mapID, info) and
+    return not (info.isQuestStart and info.inProgress) and
            MAPCLEANER_FILTERED_QUESTS[info.questId] == nil
   end
 
@@ -162,21 +355,65 @@ function MapCleaner:Startup()
     end
   end
 
+  self.refreshPoisDps = {}
+  self.refreshVignettesDps = {}
+  self.refreshPOIs = function()
+    WorldMapFrame:RefreshAll()
+  end
+  self.refreshVignettes = function()
+  -- filtervignette + refresh does not re-add vignettes
+    WorldMapFrame:RefreshAll()
+  end
+  self.refreshQuests = function() WorldMapFrame:RefreshAll() end
+
   for dp,_ in pairs(WorldMapFrame.dataProviders) do
-     if dp.ShouldShowVignette then
-        orig_VignetteDataProviderMixin_ShouldShowVignette = dp.ShouldShowVignette
-        dp.ShouldShowVignette = VignetteDataProviderMixin_ShouldShowVignette
-        self.refreshVignettes = function() dp:RefreshAllData(false) end -- todo: does not work
-     end
-     if dp.RemoveAllData and dp.RemoveAllData == AreaPOIDataProviderMixin.RemoveAllData then
-        dp.RefreshAllData = AreaPOIDataProviderMixin_RefreshAllData
-        self.refreshPOIs = function() dp:RefreshAllData(false) end
-     end
-     if dp.RefreshAllData and dp.RefreshAllData == BonusObjectiveDataProviderMixin.RefreshAllData then
-        orig_MapUtil_ShouldShowTask = MapUtil.ShouldShowTask
-        MapUtil.ShouldShowTask = MapUtil_ShouldShowTask
-        self.refreshQuests = function() dp:RefreshAllData(false) end
-     end
+    -----print('- dp')
+    -----dump(dp)
+    -----if dp.RefreshAllData then
+    -----  local refreshPoiPinTemplate = RefreshAllDataPoiMixins[dp.RefreshAllData]
+    -----  if refreshPoiPinTemplate then
+    -----   -- print('-- ', refreshPoiPinTemplate)
+    -----    hooksecurefunc(dp, "RefreshAllData", makeFilterCallback(dp, refreshPoiPinTemplate, filterByPinAreaPoiID))
+    -----    table.insert(self.refreshPoisDps, dp)
+    -----  end
+-----
+    -----  local refreshVignettePinTemplate = RefreshAllDataVignetteMixins[dp.RefreshAllData]
+    -----  if refreshVignettePinTemplate then
+    -----   -- print('-- ', refreshVignettePinTemplate)
+    -----    hooksecurefunc(dp, "RefreshAllData", makeFilterCallback(dp, refreshVignettePinTemplate, filterVignetteDataProviderMixin))
+    -----    table.insert(self.refreshVignettesDps, dp)
+    -----  end
+-----
+    -----  local refreshQuestPinTemplates = RefreshAllQuestMixins[dp.RefreshAllData]
+    -----  if refreshQuestPinTemplates then
+    -----    print('-- ', 'RefreshAllQuestMixins')
+    -----    for _, refreshQuestPinTemplate in ipairs(refreshQuestPinTemplates) do
+    -----      print('--- ', refreshQuestPinTemplate)
+    -----      hooksecurefunc(dp, "RefreshAllData", function()
+    -----          for pin in WorldMapFrame:EnumeratePinsByTemplate(refreshQuestPinTemplate) do
+    -----            if MAPCLEANER_FILTERED_QUESTS[pin.questId] ~= nil then
+    -----              WorldMapFrame:RemovePin(pin)
+    -----            end
+    -----          end
+    -----        end)
+    -----    end
+    -----    --self.refreshQuests = function() dp:RefreshAllData(false) end --- does not refresh on unhide
+    -----  end
+    -----end
+-----
+    -- Flight points are handled by FlightPointDataProviderMixin
+    -- Calling quests are handled by BonusObjectiveDataProviderMixin
+    -- Campaign (storyline) quests are handled by StorylineQuestDataProviderMixin
+    -- World quests are handled by WorldQuestDataProviderMixin
+    -- there is Blizzard UI to remove quest objectives, and world quests (albeit by reward)
+    -- DO NOT KNOW the following: InvasionDataProviderMixin
+    -- TODO: See whether there are other items we can remove from the map - dungeon entrances, treasures, teleportation hubs
+    -- DungeonEntranceDataProviderMixin DOES NOT seem to control dungeon entrances
+
+    -----if dp.RefreshAllData and dp.RefreshAllData == BonusObjectiveDataProviderMixin.RefreshAllData then
+    -----  orig_MapUtil_ShouldShowTask = MapUtil.ShouldShowTask
+    -----  MapUtil.ShouldShowTask = MapUtil_ShouldShowTask
+    -----end
   end
 
   local refreshBountyBoard = function() end
@@ -222,28 +459,35 @@ function MapCleaner:TryGetPOIName(poiId, mapIdBegin)
     mapIdBegin = mapIdBegin or 1
 
     for mapId = mapIdBegin, mapIdEnd do
-      for i, pid in ipairs(GetAreaPOIsForPlayerByMapIDCached(mapId)) do
-        if poiId == pid then
-          local poiInfo = C_AreaPoiInfo.GetAreaPOIInfo(mapId, poiId)
-          if poiInfo then
-            self.cachedPOINames[poiId] = poiInfo.name
+      for _, source in pairs(poiSources) do
+        for i, pid in ipairs(source(mapId)) do
+          if poiId == pid then
+            local poiInfo = C_AreaPoiInfo.GetAreaPOIInfo(mapId, poiId)
+            if poiInfo then
+              self.cachedPOINames[poiId] = poiInfo.name
+            end
           end
         end
       end
     end
   end
+
   return self.cachedPOINames[poiId] or SENTINEL_UNKNOWN_NAME
 end
 
 function MapCleaner:AllVisiblePOIs(reallyAll)
   local pois = {}
   for mapId in relevantMapIds(reallyAll) do
-    for i, poiId in ipairs(GetAreaPOIsForPlayerByMapIDCached(mapId)) do
-      local name = self:TryGetPOIName(poiId, mapId)
-      if name ~= nil then
-        pois[poiId] = name
+    for _, source in pairs(poiSources) do
+      for i, poiId in ipairs(source(mapId)) do
+        local name = self:TryGetPOIName(poiId, mapId)
+        if name ~= nil then
+          pois[poiId] = name
+        end
       end
     end
+
+    --- C_AreaPoiInfo
   end
   return pois
 end

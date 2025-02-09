@@ -333,7 +333,7 @@ function MapCleaner:Startup()
   local orig_MapUtil_ShouldShowTask = nil
   function MapUtil_ShouldShowTask(mapID, info)
     return not (info.isQuestStart and info.inProgress) and
-           MAPCLEANER_FILTERED_QUESTS[info.questId] == nil
+           MAPCLEANER_FILTERED_QUESTS[info.questId or info.questID] == nil
   end
 
   function post_WorldMapBountyBoardMixin_Refresh(self)
@@ -579,15 +579,18 @@ function MapCleaner:TryGetQuestName(questId)
   return self.cachedQuestNames[questId] or SENTINEL_UNKNOWN_NAME
 end
 
+local GetQuestsOnMap = GetQuestsForPlayerByMapIDCached or GetQuestsOnMapCached -- WOW-56487patch11.0.5_XPTR
+
 function MapCleaner:AllVisibleQuests(reallyAll)
   local quests = {}
   for mapId in relevantMapIds(reallyAll) do
-    local maybeInfos = GetQuestsForPlayerByMapIDCached(mapId)
+    local maybeInfos = GetQuestsOnMap(mapId)
     if maybeInfos then
       for i, info in ipairs(maybeInfos) do
-        local name = self:TryGetQuestName(info.questId, mapId)
+        local questID = info.questId or info.questID
+        local name = self:TryGetQuestName(questID, mapId)
         if name ~= nil then
-          quests[info.questId] = name
+          quests[questID] = name
         end
       end
     end

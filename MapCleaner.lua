@@ -105,6 +105,15 @@ L.__meta.__index = function(tab, key)
 end
 setmetatable(L, L.__meta)
 
+local function GetMapLinkPoisForMap(mapId)
+  local ids = {}
+  for _, info in ipairs(C_Map.GetMapLinksForMap(mapId))
+  do
+    table.insert(ids, info.areaPoiID)
+  end
+  return ids
+end
+
 local RefreshAllDataPoiMixins = {
   [AreaPOIDataProviderMixin.RefreshAllData] = "AreaPOIPinTemplate",
   [AreaPOIEventDataProviderMixin.RefreshAllData] = "AreaPOIEventPinTemplate",
@@ -122,12 +131,8 @@ local poiSources = {
   GetAreaPOIsForPlayerByMapIDCached,
   C_AreaPoiInfo.GetQuestHubsForMap,
   C_AreaPoiInfo.GetEventsForMap,
+  GetMapLinkPoisForMap,
 }
-
-local function removePin(dp, pin)
-  --queue if in combat
-  removePinImpl[pin.pinTemplate](dp, pin)
-end
 
 local function removePinTrivial(pin)
   WorldMapFrame:RemovePin(pin)
@@ -159,6 +164,7 @@ local removePinImpl = {
   QuestPinTemplate           = removePinTrivial,
   ThreatObjectivePinTemplate = removePinTrivial,
   VignettePinTemplate        = removePinVignetteDataProviderMixin,
+  MapLinkPinTemplate         = removePinTrivial,
 }
 
 function MapCleaner:RemovePin(pinTemplate, pin)
@@ -166,7 +172,7 @@ function MapCleaner:RemovePin(pinTemplate, pin)
 end
 
 function MapCleaner:FilterTemplateAreaPoi(pinTemplate, pin)
-  local areaPoiId = pin.areaPoiID
+  local areaPoiId = pin.areaPoiID or pin.areaPoiId or pin.poiInfo.areaPoiID or pin.poiInfo.areaPoiId
   return areaPoiId and MAPCLEANER_FILTERED_POIS[areaPoiId] ~= nil
 end
 
@@ -193,6 +199,7 @@ local filterTemplate = {
   QuestPinTemplate           = {MapCleaner.FilterTemplateQuest},
   ThreatObjectivePinTemplate = {MapCleaner.FilterTemplateQuest},
   VignettePinTemplate        = {MapCleaner.FilterTemplateVignette},
+  MapLinkPinTemplate         = {MapCleaner.FilterTemplateAreaPoi},
 }
 
 function MapCleaner:DoTemplateUpdates()

@@ -1,4 +1,4 @@
-## Interface: 110002
+## Interface: 110002, 120000
 ## Title: MapCleaner
 ## Author: bloerwald
 ## Version: @project-version@
